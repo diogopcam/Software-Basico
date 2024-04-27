@@ -5,7 +5,6 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <string.h>
-
 #define FILE_PATH "registers.bin"
 #define FILE_SIZE 1024  // Tamanho do arquivo de registros
 #define LED_DISPLAY_REGISTERS 8
@@ -70,7 +69,7 @@ int registers_release(void* map, int file_size) {
 }
 
 // Função para configurar a mensagem no display de LED
-void configure_led_display(char* base_address, const char* message, int display_mode, int update_speed, int color) {
+void configure_led_display(char* base_address, const char* message, int display_mode, int update_speed, int led_status, int red_on, int green_on, int blue_on) {
     // Calcula o comprimento da mensagem
     int message_length = strlen(message);
 
@@ -82,30 +81,26 @@ void configure_led_display(char* base_address, const char* message, int display_
 
     // Escreve o modo de exibição no registrador R0
     *((unsigned short *)(base_address + (0 * sizeof(unsigned short)))) = display_mode;
-    printf("Modo de exibição: %d\n", *((unsigned short *)(base_address + (0 * sizeof(unsigned short)))));
 
     // Escreve a velocidade de atualização no registrador R1
     *((unsigned short *)(base_address + (1 * sizeof(unsigned short)))) = update_speed;
-    printf("Velocidade de atualização: %d\n", *((unsigned short *)(base_address + (1 * sizeof(unsigned short)))));
 
-    // Escreve a cor no registrador R2
-    unsigned int color_value;
-    switch(color) {
-        case RED:
-            color_value = RED_COLOR_VALUE;
-            break;
-        case GREEN:
-            color_value = GREEN_COLOR_VALUE;
-            break;
-        case BLUE:
-            color_value = BLUE_COLOR_VALUE;
-            break;
-        default:
-            fprintf(stderr, "Erro: cor desconhecida\n");
-            return;
+    // Configura o LED de status e sua cor associada no registrador de controle
+    unsigned short control_register_value = 0;
+    if (led_status) {
+        // Se o LED de status estiver ligado, definimos os bits 10, 11 e 12 conforme especificado
+        control_register_value |= (1 << 9); // Bit 9: Liga/Desliga o LED de status
+        if (red_on) {
+            control_register_value |= (1 << 10); // Bit 10: Controla o componente vermelho (R)
+        }
+        if (green_on) {
+            control_register_value |= (1 << 11); // Bit 11: Controla o componente verde (G)
+        }
+        if (blue_on) {
+            control_register_value |= (1 << 12); // Bit 12: Controla o componente azul (B)
+        }
     }
-    *((unsigned int *)(base_address + (2 * sizeof(unsigned short)))) = color_value;
-    printf("Cor: %u\n", *((unsigned int *)(base_address + (2 * sizeof(unsigned short)))));
+    *((unsigned short *)(base_address + (2 * sizeof(unsigned short)))) = control_register_value;
 
     // Escreve a mensagem nos registradores de dados (R4 a R11)
     int i;
@@ -117,14 +112,37 @@ void configure_led_display(char* base_address, const char* message, int display_
     for (; i < LED_DISPLAY_REGISTERS - 3; i++) {
         *((unsigned short *)(base_address + ((i + 3) * sizeof(unsigned short)))) = ' ';
     }
-
-    // Imprime a mensagem configurada
-    printf("Mensagem configurada: %s\n", message);
 }
 
-// Função para imprimir a mensagem com a cor mapeada no registrador
-void print_message_with_color(const char* message, unsigned int color_value) {
-    printf("\033[38;2;%u;%u;%um%s\033[0m\n", (color_value >> 16) & 0xFF, (color_value >> 8) & 0xFF, color_value & 0xFF, message);
+void print_message_with_color_and_rgb(const char* message, char* base_address) {
+    // Verifica o status do LED (bit 9)
+    unsigned short control_register_value = *((unsigned short *)(base_address + (2 * sizeof(unsigned short))));
+    int led_status = (control_register_value >> 9) & 0x01;
+
+    // Se o LED estiver desligado, não imprime a mensagem
+    if (led_status == 0) {
+        return;
+    }
+
+    // Se o LED estiver ligado, obtém os valores dos bits de controle do RGB
+    int red_on = (control_register_value >> 10) & 0x01;
+    int green_on = (control_register_value >> 11) & 0x01;
+    int blue_on = (control_register_value >> 12) & 0x01;
+
+    // Calcula o valor RGB com base nos bits de controle
+    unsigned int color = 0;
+    if (red_on) {
+        color |= 0xFF0000; // Define o componente vermelho como máximo
+    }
+    if (green_on) {
+        color |= 0x00FF00; // Define o componente verde como máximo
+    }
+    if (blue_on) {
+        color |= 0x0000FF; // Define o componente azul como máximo
+    }
+
+    // Imprime a mensagem com a cor especificada
+    printf("\x1b[38;2;%d;%d;%dm%s\x1b[0m\n", (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF, message);
 }
 
 int main() {
@@ -138,15 +156,16 @@ int main() {
     printf("Display:\n");
 
     // Configurar a mensagem "Hello World" com cor vermelha
-    configure_led_display(map, "Hello", 0, 0, GREEN); // Modo de exibição: 0, Velocidade de atualização: 0, Cor: RED
+    //configure_led_display(map, "Hello", 0, 0, GREEN); // Modo de exibição: 0, Velocidade de atualização: 0, Cor: RED
 
     // Obter o valor da cor armazenado no registrador R2
     unsigned int color_value = *((unsigned int *)(map + (2 * sizeof(unsigned short))));
 
-    // Imprimir a mensagem com a cor mapeada
-    print_message_with_color("Hello", color_value);
-
-
+    // Configurar a mensagem "Hello" com o LED ligado e o RGB vermelho ligado também
+    configure_led_display(map, "Hello!", 0, 0, 1, 1, 0, 0);
+    
+    // Imprimir a mensagem com a cor registrada no registrador
+    print_message_with_color_and_rgb("Hello!", map);
 
     // Liberar recursos
     if (registers_release(map, FILE_SIZE) == -1) {
