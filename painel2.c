@@ -44,7 +44,7 @@ void painel(const char *texto) {
 
 int main() {
     // Chama a função painel() passando a string desejada como parâmetro
-    painel("Radiohead");
+    //painel("Radiohead");
 
     return 0;
 }

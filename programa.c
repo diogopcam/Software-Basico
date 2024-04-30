@@ -27,6 +27,8 @@ enum Colors {
 #define BLUE_COLOR_VALUE 0x0000FF
 
 int fd = -1; // Descritor de arquivo global
+char mensagem[] = "teste";
+char mensagemMostrada[] = "";
 
 // Função para abrir ou criar o arquivo e mapeá-lo na memória
 char* registers_map(const char* file_path, int file_size) {
@@ -272,8 +274,9 @@ void configure_text_display(char* base_address, const char* message) {
 // Função para exibir o menu principal
 void exibir_menu_principal() {
     printf("Seja bem vindo ao sistema de LED.\n");
-    printf("Digite 1 para manipular as cores\n");
     printf("Digite 0 para sair do programa\n");
+    printf("Digite 1 para manipular as cores\n");
+    printf("Digite 2 para definir a mensagem que vai ser exibida\n");
 }
 
 // Função para exibir o menu de manipulação das cores
@@ -288,6 +291,13 @@ void exibir_menu_cores() {
 void exibir_menu_intensidade(char componente) {
     printf("\nAjuste a intensidade do componente %c (0-255), ou digite 0 para voltar ao menu principal: ", componente);
 }
+
+// void display_registers(char* base_address) {
+//     printf("Conteúdo dos registradores:\n");
+//     for (int i = 0; i < LED_DISPLAY_REGISTERS; i++) {
+//         printf("R%d: %c\n", i, *((unsigned short *)(base_address + (i * sizeof(unsigned short)))));
+//     }
+// }
 
 void painel(const char *texto) {
     // Inicializa a biblioteca NCurses
@@ -347,6 +357,18 @@ int main() {
         scanf("%d", &opcao_principal);
 
         switch (opcao_principal) {
+            case 0:
+                // Imprimir os valores armazenados nos registradores de RGB
+                // printf("\nValores armazenados nos registradores de RGB:\n");
+                // printf("R: %d\n", (*((unsigned short *)(map + (2 * sizeof(unsigned short)))) >> 10) & 0x01);
+                // printf("G: %d\n", (*((unsigned short *)(map + (2 * sizeof(unsigned short)))) >> 11) & 0x01);
+                // printf("B: %d\n", (*((unsigned short *)(map + (2 * sizeof(unsigned short)))) >> 12) & 0x01);
+                //print_message_with_color_and_rgb("Radiohead", map);
+                painel(mensagem);
+                //return 0;
+                //display_registers(FILE_PATH);
+                break;
+
             case 1:
                 // Exibir menu de manipulação das cores
                 exibir_menu_cores();
@@ -374,16 +396,12 @@ int main() {
                         break;
                 }
                 break;
-            case 0:
-                // Imprimir os valores armazenados nos registradores de RGB
-                // printf("\nValores armazenados nos registradores de RGB:\n");
-                // printf("R: %d\n", (*((unsigned short *)(map + (2 * sizeof(unsigned short)))) >> 10) & 0x01);
-                // printf("G: %d\n", (*((unsigned short *)(map + (2 * sizeof(unsigned short)))) >> 11) & 0x01);
-                // printf("B: %d\n", (*((unsigned short *)(map + (2 * sizeof(unsigned short)))) >> 12) & 0x01);
-                print_message_with_color_and_rgb("Radiohead", map);
-                painel("Radiohead");
-                //return 0;
-                break;
+
+            case 2:
+                printf("Qual mensagem você deseja exibir?\n");
+                scanf("%s", mensagem);
+                //configure_text_display(FILE_PATH, mensagem);
+
             default:
                 printf("Opção inválida.\n");
                 break;
