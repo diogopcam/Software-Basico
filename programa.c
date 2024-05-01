@@ -15,6 +15,8 @@
 #define RGB_LED_REGISTER 10
 #define TEMPERATURE_SENSOR_REGISTER 11
 #define BATTERY_REGISTER 12
+
+
 // Definindo enumeração para cores
 enum Colors {
     RED,
@@ -22,9 +24,13 @@ enum Colors {
     BLUE
 };
 
-#define RED_COLOR_VALUE 0xFF0000
-#define GREEN_COLOR_VALUE 0x00FF00
-#define BLUE_COLOR_VALUE 0x0000FF
+// Corrigindo a máscara para o componente vermelho
+#define RED_MASK   0xFF00
+
+// Corrigindo a máscara para o componente verde
+#define GREEN_MASK 0xFF0000
+
+#define BLUE_MASK   0xFF
 
 int fd = -1; // Descritor de arquivo global
 
@@ -112,7 +118,6 @@ void set_valor_B(char* base_address, int blue_value) {
     *((unsigned short *)(base_address + (2 * sizeof(unsigned short)))) = control_register_value;
 }
 
-// Função para definir a intensidade do componente vermelho (R) no display LED
 void set_intensity_R(char* base_address, int intensity) {
     // Garante que a intensidade esteja dentro do intervalo válido (0-255)
     if (intensity < 0 || intensity > 255) {
@@ -120,11 +125,18 @@ void set_intensity_R(char* base_address, int intensity) {
         return;
     }
 
-    // Escreve a intensidade do componente R no registrador de controle 1 (R1)
-    *((unsigned short *)(base_address + (1 * sizeof(unsigned short)))) = intensity;
-}
+    // Lê o valor atual do registrador R1
+    unsigned short value = *((unsigned short *)(base_address + (1 * sizeof(unsigned short))));
 
-// Função para definir a intensidade do componente verde (G) no display LED
+    // Limpa os bits correspondentes ao componente vermelho
+    value &= ~RED_MASK;
+
+    // Define a intensidade do componente vermelho
+    value |= (intensity & 0xFF); // Aplica a máscara corretamente
+
+    // Escreve o novo valor no registrador R1
+    *((unsigned short *)(base_address + (1 * sizeof(unsigned short)))) = value;
+}
 void set_intensity_G(char* base_address, int intensity) {
     // Garante que a intensidade esteja dentro do intervalo válido (0-255)
     if (intensity < 0 || intensity > 255) {
@@ -132,11 +144,21 @@ void set_intensity_G(char* base_address, int intensity) {
         return;
     }
 
-    // Escreve a intensidade do componente G no registrador de controle 1 (R1)
-    *((unsigned short *)(base_address + (1 * sizeof(unsigned short)))) = intensity;
+    // Lê o valor atual do registrador R1
+    unsigned short value = *((unsigned short *)(base_address + (1 * sizeof(unsigned short))));
+
+    // Limpa os bits correspondentes ao componente verde
+    value &= ~GREEN_MASK;
+
+    // Define a intensidade do componente verde
+    value |= (intensity & 0xFF0000); // Aplica a máscara corretamente
+
+    // Escreve o novo valor no registrador R1
+    *((unsigned short *)(base_address + (1 * sizeof(unsigned short)))) = value;
 }
 
-// Função para definir a intensidade do componente azul (B) no display LED
+
+// Corrigindo a aplicação da máscara no método set_intensity_B
 void set_intensity_B(char* base_address, int intensity) {
     // Garante que a intensidade esteja dentro do intervalo válido (0-255)
     if (intensity < 0 || intensity > 255) {
@@ -144,8 +166,20 @@ void set_intensity_B(char* base_address, int intensity) {
         return;
     }
 
-    // Escreve a intensidade do componente B no registrador de controle 2 (R2)
-    *((unsigned short *)(base_address + (2 * sizeof(unsigned short)))) = intensity;
+    // Limpa todos os bits do valor atual do registrador R2
+    //unsigned short value = 0;
+
+    // Lê o valor atual do registrador R2
+    unsigned short value = *((unsigned short *)(base_address + (2 * sizeof(unsigned short))));
+
+    // Limpa os bits correspondentes ao componente azul
+    value &= ~BLUE_MASK;
+
+    // Define a intensidade do componente azul
+    value |= (intensity & 0xFF); // <--- Aqui está a correção
+
+    // Escreve o novo valor no registrador R2
+    *((unsigned short *)(base_address + (2 * sizeof(unsigned short)))) = value;
 }
 
 void print_message_with_color_and_rgb(const char* message, char* base_address) {
@@ -176,15 +210,12 @@ void print_message_with_color_and_rgb(const char* message, char* base_address) {
     unsigned int color = 0;
     if (red_on) {
         color |= 0xFF0000; // Define o componente vermelho como máximo
-        printf("Vermelho");
     }
     if (green_on) {
         color |= 0x00FF00; // Define o componente verde como máximo
-        printf("Verde");
     }
     if (blue_on) {
         color |= 0x0000FF; // Define o componente azul como máximo
-        printf("Azul");
     }
 
     // Imprime a mensagem com a cor especificada
@@ -195,57 +226,6 @@ void print_message_with_color_and_rgb(const char* message, char* base_address) {
     printf("\x1b[0m\n");
 }
 
-// void print_message_with_color_and_rgb(const char* message, char* base_address) {
-//     // Obtém os valores dos registradores R, G e B
-//     int red_on = (*((unsigned short *)(base_address + (2 * sizeof(unsigned short)))) >> 10) & 0x01;
-//     int green_on = (*((unsigned short *)(base_address + (2 * sizeof(unsigned short)))) >> 11) & 0x01;
-//     int blue_on = (*((unsigned short *)(base_address + (2 * sizeof(unsigned short)))) >> 12) & 0x01;
-
-//     // Calcula a cor com base nos valores dos registradores
-//     unsigned int color = 0;
-//     if (red_on) {
-//         color |= 0xFF0000; // Componente vermelho máximo
-//     }
-//     if (green_on) {
-//         color |= 0x00FF00; // Componente verde máximo
-//     }
-//     if (blue_on) {
-//         color |= 0x0000FF; // Componente azul máximo
-//     }
-
-//     // Inicialização do ncurses
-//     initscr();
-//     start_color();
-//     init_pair(1, COLOR_BLACK, color);
-
-//     // Preenche o painel com a mensagem colorida
-//     int painel_largura = 40;
-//     int painel_altura = 10;
-//     char painel[painel_altura][painel_largura];
-
-//     // Limpa o painel
-//     for (int linha = 0; linha < painel_altura; linha++) {
-//         for (int coluna = 0; coluna < painel_largura; coluna++) {
-//             painel[linha][coluna] = ' ';
-//         }
-//     }
-
-//     // Exibe a mensagem colorida no painel
-//     attron(COLOR_PAIR(1));
-//     for (int i = 0; i < strlen(message) && (i + 4) < 16; i++) {
-//         int linha = i / painel_largura;
-//         int coluna = i % painel_largura;
-//         painel[linha][coluna] = message[i];
-//     }
-//     for (int linha = 0; linha < painel_altura; linha++) {
-//         mvprintw(linha, 0, painel[linha]);
-//     }
-//     attroff(COLOR_PAIR(1));
-//     refresh();
-
-//     // Finalização do ncurses
-//     endwin();
-// }
 // Função para configurar a mensagem no display de LED
 void configure_text_display(char* base_address, const char* message) {
     // Calcula o comprimento da mensagem
@@ -289,19 +269,49 @@ void exibir_menu_intensidade(char componente) {
     printf("\nAjuste a intensidade do componente %c (0-255), ou digite 0 para voltar ao menu principal: ", componente);
 }
 
+// Função para imprimir as intensidades de cada componente
+void print_component_intensities(char* base_address) {
+    // Lê o valor atual do registrador R1 (componentes R e G)
+    unsigned short r1_value = *((unsigned short *)(base_address + (1 * sizeof(unsigned short))));
+
+    // Lê o valor atual do registrador R2 (componente B)
+    unsigned short r2_value = *((unsigned short *)(base_address + (2 * sizeof(unsigned short))));
+
+    // Extrai a intensidade do componente vermelho
+    int intensity_R = r1_value & RED_MASK;
+
+    // Extrai a intensidade do componente verde (deslocando 8 bits para a direita)
+    int intensity_G = (r1_value & GREEN_MASK) >> 8;
+
+    // Extrai a intensidade do componente azul
+    int intensity_B = r2_value & BLUE_MASK;
+
+    // Imprime as intensidades de cada componente
+    printf("Intensidade do componente vermelho: %d\n", intensity_R);
+    printf("Intensidade do componente verde: %d\n", intensity_G);
+    printf("Intensidade do componente azul: %d\n", intensity_B);
+}
+
 void painel(const char *texto) {
     // Inicializa a biblioteca NCurses
     initscr();
     // Esconde o cursor
     curs_set(0);
 
+    int linhas = 15;
+    int colunas = 24;
+    // Cria a janela
+    WINDOW *win = newwin(linhas, colunas, 0, 0);
+
     // Obtém o tamanho da tela
-    int max_y, max_x;
-    getmaxyx(stdscr, max_y, max_x);
+    //int max_y, max_x;
+    //getmaxyx(stdscr, max_y, max_x);
 
     // Posição inicial da string
     int x = 0;
-    int y = max_y / 2;
+    // int y = max_y / 2;
+    int y = 0;
+    
 
     // Loop infinito para animação
     while (1) {
@@ -318,7 +328,7 @@ void painel(const char *texto) {
         x++;
 
         // Se a string sair da tela, volta para a esquerda
-        if (x > max_x) {
+        if (x > colunas) {
             x = 0;
         }
 
@@ -330,6 +340,8 @@ void painel(const char *texto) {
     endwin();
 }
 
+
+
 int main() {
     // Abrir o arquivo e mapeá-lo na memória
     char* map = registers_map(FILE_PATH, FILE_SIZE);
@@ -337,11 +349,14 @@ int main() {
         return EXIT_FAILURE;
     }
 
+
     int opcao_principal;
     int opcao_cores;
     int valor_componente;
+    //int valor_intensidade;
 
     do {
+        //painel("Radiohead");
         // Exibir menu principal
         exibir_menu_principal();
         scanf("%d", &opcao_principal);
@@ -360,6 +375,9 @@ int main() {
                     case 1:
                         // Manipular o componente vermelho (R)
                         set_valor_R(map, valor_componente);
+                        // printf("Defina a intensidade de R: ");
+                        // scanf("%d", &valor_intensidade);
+                        // set_intensity_R(map, valor_intensidade);
                         break;
                     case 2:
                         // Manipular o componente verde (G)
@@ -381,7 +399,11 @@ int main() {
                 // printf("G: %d\n", (*((unsigned short *)(map + (2 * sizeof(unsigned short)))) >> 11) & 0x01);
                 // printf("B: %d\n", (*((unsigned short *)(map + (2 * sizeof(unsigned short)))) >> 12) & 0x01);
                 print_message_with_color_and_rgb("Radiohead", map);
-                painel("Radiohead");
+                set_intensity_R(map, 123);
+                set_intensity_G(map, 100);
+                set_intensity_B(map, 30);
+                print_component_intensities(map);
+                // painel("Radiohead");
                 //return 0;
                 break;
             default:
