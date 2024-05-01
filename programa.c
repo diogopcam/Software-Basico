@@ -299,7 +299,7 @@ void exibir_menu_intensidade(char componente) {
 //     }
 // }
 
-void painel(const char *texto) {
+void painel(char* base_address) {
     // Inicializa a biblioteca NCurses
     initscr();
     // Esconde o cursor
@@ -313,14 +313,24 @@ void painel(const char *texto) {
     int x = 0;
     int y = max_y / 2;
 
+    // String para armazenar os caracteres dos registradores
+    char mensagem[LED_DISPLAY_REGISTERS + 1];
+    mensagem[LED_DISPLAY_REGISTERS] = '\0'; // Certifique-se de que a string esteja terminada com null
+
     // Loop infinito para animação
     while (1) {
         // Limpa a tela
         clear();
 
-        // Imprime a string na posição atual
-        mvprintw(y, x, texto);
-        
+        // Lê os caracteres dos registradores e os concatena na string 'mensagem'
+        int i;
+        for (i = 0; i < LED_DISPLAY_REGISTERS; i++) {
+            mensagem[i] = *((unsigned short *)(base_address + ((i + 3) * sizeof(unsigned short))));
+        }
+
+        // Imprime a mensagem com a cor e o RGB correspondentes aos registradores
+        print_message_with_color_and_rgb(mensagem, base_address);
+
         // Atualiza a tela
         refresh();
 
@@ -339,6 +349,16 @@ void painel(const char *texto) {
     // Finaliza a biblioteca NCurses
     endwin();
 }
+
+// Função para exibir os valores dos registradores no console
+void display_registers(char* base_address) {
+    printf("Conteúdo dos registradores:\n");
+    for (int i = 0; i < LED_DISPLAY_REGISTERS; i++) {
+        printf("%c ", *((unsigned short *)(base_address + ((i + 3) * sizeof(unsigned short)))));
+    }
+    printf("\n");
+}
+
 
 int main() {
     // Abrir o arquivo e mapeá-lo na memória
@@ -364,9 +384,9 @@ int main() {
                 // printf("G: %d\n", (*((unsigned short *)(map + (2 * sizeof(unsigned short)))) >> 11) & 0x01);
                 // printf("B: %d\n", (*((unsigned short *)(map + (2 * sizeof(unsigned short)))) >> 12) & 0x01);
                 //print_message_with_color_and_rgb("Radiohead", map);
-                painel(mensagem);
+                //painel(map);
                 //return 0;
-                //display_registers(FILE_PATH);
+                display_registers(map);
                 break;
 
             case 1:
@@ -400,7 +420,7 @@ int main() {
             case 2:
                 printf("Qual mensagem você deseja exibir?\n");
                 scanf("%s", mensagem);
-                //configure_text_display(FILE_PATH, mensagem);
+                configure_text_display(map, mensagem);
 
             default:
                 printf("Opção inválida.\n");
