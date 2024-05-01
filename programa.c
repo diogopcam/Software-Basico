@@ -1,4 +1,3 @@
-@@ -5,9 +5,6 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <string.h>
@@ -8,7 +7,6 @@
 #define FILE_PATH "registers.bin"
 #define FILE_SIZE 1024  // Tamanho do arquivo de registros
 #define LED_DISPLAY_REGISTERS 8
-	@@ -16,21 +13,16 @@
 #define TEMPERATURE_SENSOR_REGISTER 11
 #define BATTERY_REGISTER 12
 
