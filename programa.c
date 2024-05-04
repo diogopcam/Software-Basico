@@ -27,6 +27,7 @@ enum Colors {
 #define BLUE_MASK   0xFF
 
 int fd = -1; // Descritor de arquivo global
+char* mensagem = "";
 
 // Função para abrir ou criar o arquivo e mapeá-lo na memória
 char* registers_map(const char* file_path, int file_size) {
@@ -404,6 +405,23 @@ void set_led_temperature(char* base_address, int temperature) {
     printf("Temperatura do LED definida como: %d\n", temperature);
 }
 
+// Função para armazenar os valores nos registradores
+char* store_registers(char* base_address) {
+    char* registro_string = (char*)malloc(LED_DISPLAY_REGISTERS * sizeof(char) + 1); // +1 para o caractere nulo
+    if (registro_string == NULL) {
+        perror("Erro ao alocar memória para a string de registradores");
+        return NULL;
+    }
+
+    // Conteúdo dos registradores
+    for (int i = 0; i < LED_DISPLAY_REGISTERS; i++) {
+        registro_string[i] = *((unsigned short *)(base_address + ((i + 3) * sizeof(unsigned short))));
+    }
+    registro_string[LED_DISPLAY_REGISTERS] = '\0'; // Terminador nulo
+
+    return registro_string;
+}
+
 void painel(const char *texto) {
 
 
@@ -584,6 +602,12 @@ int main() {
                 display_battery_sensor(map);
                 // painel("Radiohead");
                 //return 0;
+                break;
+            case 4:
+                printf("Qual mensagem você deseja exibir?\n");
+                scanf("%s", mensagem);
+                configure_text_display(map, mensagem);
+                painel(store_registers(map));
                 break;
             default:
                 printf("Opção inválida.\n");
