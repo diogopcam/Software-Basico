@@ -340,7 +340,7 @@ void painel(const char *texto) {
     endwin();
 }
 
-// Função para exibir os valores dos registradores no console
+// Função para armazenar os valores nos registradores
 char* display_registers(char* base_address) {
     char* registro_string = (char*)malloc(LED_DISPLAY_REGISTERS * sizeof(char) + 1); // +1 para o caractere nulo
     if (registro_string == NULL) {
