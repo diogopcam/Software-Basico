@@ -242,6 +242,30 @@ void set_led_status(char* base_address, int status) {
     printf("Status do LED atualizado para: %d\n", status);
 }
 
+
+void set_battery_level(char* base_address, int level) {
+    // Verifica se o nível de bateria é válido (0 a 3)
+    if (level < 0 || level > 3) {
+        fprintf(stderr, "Erro: Nível de bateria inválido. Deve estar entre 0 e 3.\n");
+        return;
+    }
+
+    // Lê o valor atual do registrador R3
+    unsigned short register_value = *((unsigned short *)(base_address + (3 * sizeof(unsigned short))));
+
+    // Limpa os bits correspondentes ao nível de bateria (bits 0 e 1)
+    register_value &= ~(0b11);
+
+    // Define o novo nível de bateria
+    register_value |= level;
+    int battery_level = register_value & 0b11;
+
+    // Escreve o novo valor no registrador R3
+    *((unsigned short *)(base_address + (3 * sizeof(unsigned short)))) = register_value;
+
+    printf("Nível de bateria definido em binário para: %d%d\n", (battery_level >> 1) & 1, battery_level & 1);
+}
+
 void print_message_with_color_and_rgb(const char* message, char* base_address) {
     // Verifica o status do LED (bit 9)
     unsigned short control_register_value = *((unsigned short *)(base_address + (2 * sizeof(unsigned short))));
@@ -415,7 +439,6 @@ int main() {
         return EXIT_FAILURE;
     }
 
-
     int opcao_principal;
     int opcao_cores;
     int valor_componente;
@@ -470,6 +493,7 @@ int main() {
                 //set_intensity_B(map, 255);
                 //print_component_intensities(map);
                 set_led_status(map, 1);
+                set_battery_level(map, 3);
                 print_message_with_color_and_rgb("Radiohead", map);
                 // painel("Radiohead");
                 //return 0;
