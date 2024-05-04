@@ -7,7 +7,6 @@
 #include <string.h>
 #include <ctype.h>
 #include <ncurses.h>
-
 #define FILE_PATH "registers.bin"
 #define FILE_SIZE 1024  // Tamanho do arquivo de registros
 #define LED_DISPLAY_REGISTERS 8
@@ -16,7 +15,6 @@
 #define TEMPERATURE_SENSOR_REGISTER 11
 #define BATTERY_REGISTER 12
 
-
 // Definindo enumeração para cores
 enum Colors {
     RED,
@@ -24,17 +22,9 @@ enum Colors {
     BLUE
 };
 
-// Corrigindo a máscara para o componente vermelho
-//#define RED_MASK   0xFFFFFF00
-//RED_MASK deve ser 0xFFFFFF00
 #define RED_MASK 0xF800
-// Corrigindo a máscara para o componente verde
-// #define GREEN_MASK 0xF0
-//#define GREEN_MASK 0x07E0
 #define GREEN_MASK 0x07E0
-
 #define BLUE_MASK   0xFF
-
 
 int fd = -1; // Descritor de arquivo global
 
@@ -121,35 +111,6 @@ void set_valor_B(char* base_address, int blue_value) {
 
     *((unsigned short *)(base_address + (2 * sizeof(unsigned short)))) = control_register_value;
 }
-
-// void set_intensity_R(char* base_address, int intensity) {
-//     // Para ler o registrador R1
-//     // unsigned short value = *((unsigned short *)(base_address + (1 * sizeof(unsigned short))));
-    
-//     // Garante que a intensidade esteja dentro do intervalo válido (0-255)
-//     if (intensity < 0 || intensity > 255) {
-//         fprintf(stderr, "Erro: Intensidade do componente R fora do intervalo válido (0-255)\n");
-//         return;
-//     }
-
-//     // Lê o valor atual do registrador R1
-//     unsigned short value = *((unsigned short *)(base_address + (1 * sizeof(unsigned short))));
-//     printf("Armazenou no R1");
-    
-//     value &= 0x00FF; // Extract lower 8 bits (assuming little-endian)
-
-//     // Clear the green and blue bits (RED_MASK is used indirectly)
-//     value &= ~(GREEN_MASK | BLUE_MASK);
-
-//     // Set the red component intensity
-//     value |= ((intensity & 0xFF) << 8);
-
-
-//     // Escreve o novo valor no registrador R1
-//     *((unsigned short *)(base_address + (1 * sizeof(unsigned short)))) = value;
-
-//     printf("Register R1 value after setting red component intensity: %hu\n", *((unsigned short *)(base_address + (1 * sizeof(unsigned short)))));
-// }
 
 void set_intensity_R(char* base_address, int intensity) {
     // Garante que a intensidade esteja dentro do intervalo válido (0-255)
@@ -338,8 +299,6 @@ void configure_text_display(char* base_address, const char* message) {
     }
 }
 
-
-
 // Função para exibir o menu principal
 void exibir_menu_principal() {
     printf("Seja bem vindo ao sistema de LED.\n");
@@ -391,7 +350,6 @@ void print_component_intensities(char* base_address) {
     printf("Intensidade do componente azul: %d\n", intensity_B);
 }
 
-
 // Função para exibir o sensor na tela com base no nível de bateria
 void display_battery_sensor(char* base_address) {
     // Lê o valor atual do registrador R3
@@ -419,7 +377,36 @@ void display_battery_sensor(char* base_address) {
 }
 
 
+// Função para definir a temperatura do LED nos bits do 6 ao 15 do registrador R3
+void set_led_temperature(char* base_address, int temperature) {
+    // Garante que a temperatura esteja dentro do intervalo válido (0-1023)
+    if (temperature < 0 || temperature > 1023) {
+        fprintf(stderr, "Erro: Temperatura do LED fora do intervalo válido (0-1023)\n");
+        return;
+    }
+
+    // Lê o valor atual do registrador R3
+    unsigned short register_value = *((unsigned short *)(base_address + (3 * sizeof(unsigned short))));
+
+    printf("Valor armazenado nos bits do 6 ao 15 antes da escrita: %d\n", register_value);
+    
+    // Limpa os bits do 6 ao 15 do registrador R3
+    register_value &= ~(0b111111111111 << 6);
+
+    // Define a temperatura do LED nos bits do 6 ao 15 do registrador R3 (dividida por 10)
+    register_value |= ((temperature / 10) << 6);
+
+    // Escreve o novo valor no registrador R3
+    *((unsigned short *)(base_address + (3 * sizeof(unsigned short)))) = register_value;
+
+    printf("Valor armazenado nos bits do 6 ao 15 após a escrita: %d\n", register_value);
+
+    printf("Temperatura do LED definida como: %d\n", temperature);
+}
+
 void painel(const char *texto) {
+
+
     // Inicializa a biblioteca NCurses
     initscr();
     // Esconde o cursor
@@ -466,8 +453,63 @@ void painel(const char *texto) {
     // Finaliza a biblioteca NCurses
     endwin();
 }
+void exibir_painel() {
+    // Inicializa o modo ncurses
+    initscr();
 
+    // Desativa o modo de eco de caracteres digitados
+    noecho();
 
+    // Define a tecla Enter como fim de entrada
+    keypad(stdscr, TRUE);
+
+    // Obtém as dimensões da tela
+    int linhas, colunas;
+    getmaxyx(stdscr, linhas, colunas);
+
+    // Calcula a posição central para o painel
+    int inicio_linha = linhas / 2 - 2; // Diminui 2 para centralizar verticalmente
+    int inicio_coluna = colunas / 2 - 12; // Diminui 12 para centralizar horizontalmente
+
+    // Cria uma nova janela para o painel
+    WINDOW *painel = newwin(50, 50, 6, 6);
+
+    // Define o estilo da janela
+    box(painel, 0, 0); // Adiciona uma borda à janela
+
+    // Imprime o conteúdo do painel
+    mvwprintw(painel, 1, 2, "Seja bem vindo ao sistema de LED.");
+    mvwprintw(painel, 2, 2, "Digite 0 para ligar ou desligar o LED");
+    mvwprintw(painel, 3, 2, "Digite 1 para manipular as cores");
+    mvwprintw(painel, 4, 2, "Digite 2 para sair do programa");
+    mvwprintw(painel, 5, 2, "Digite 2 para sair do programa");
+
+    //Digite 0 para ligar ou desligar o LED Digite 1 para manipular as cores
+    //Digite 2 para sair do programa\nDigite 3 para sair do programa\n");
+
+    // Atualiza a tela
+    wrefresh(painel);
+
+    // Captura a entrada do usuário
+    char entrada[100];
+    mvwgetstr(painel, 3, 2, entrada);
+
+    // Imprime a entrada do usuário
+    //mvwprintw(painel, 4, 2, "Você digitou: %s", entrada);
+    //exibir_menu_principal();
+    wrefresh(painel);
+
+    // Aguarda a entrada do usuário
+    getch();
+
+    // Limpa e destrói a janela do painel
+    werase(painel);
+    wrefresh(painel);
+    delwin(painel);
+
+    // Finaliza o modo ncurses
+    endwin();
+}
 
 int main() {
     // Abrir o arquivo e mapeá-lo na memória
@@ -484,10 +526,9 @@ int main() {
     int valor_intensidade;
 
     do {
-        //painel("Radiohead");
-        // Exibir menu principal
-        exibir_menu_principal();
-        scanf("%d", &opcao_principal);
+        exibir_painel();
+        //exibir_menu_principal();
+        //scanf("%d", &opcao_principal);
 
         switch (opcao_principal) {
             case 0:
@@ -538,6 +579,7 @@ int main() {
                 break;
             case 3:
                 set_led_status(map, 1);
+                set_led_temperature(map, 30);
                 print_message_with_color_and_rgb("Radiohead", map);
                 display_battery_sensor(map);
                 // painel("Radiohead");
@@ -547,7 +589,7 @@ int main() {
                 printf("Opção inválida.\n");
                 break;
         }
-    } while (opcao_principal != 2);
+    } while (opcao_principal != 3);
 
     // Liberar recursos
     if (registers_release(map, FILE_SIZE) == -1) {
