@@ -339,6 +339,8 @@ void configure_text_display(char* base_address, const char* message) {
     }
 }
 
+
+
 // Função para exibir o menu principal
 void exibir_menu_principal() {
     printf("Seja bem vindo ao sistema de LED.\n");
@@ -381,6 +383,34 @@ void print_component_intensities(char* base_address) {
     printf("Intensidade do componente verde: %d\n", intensity_G);
     printf("Intensidade do componente azul: %d\n", intensity_B);
 }
+
+
+// Função para exibir o sensor na tela com base no nível de bateria
+void display_battery_sensor(char* base_address) {
+    // Lê o valor atual do registrador R3
+    unsigned short register_value = *((unsigned short *)(base_address + (3 * sizeof(unsigned short))));
+
+    // Obtém os dois primeiros bits do valor do registrador R3 (bits 0 e 1)
+    int battery_level = register_value & 0b11;
+
+    printf("Sensor de bateria: ");
+
+    // Determine a cor do sensor com base no nível de bateria
+    switch (battery_level) {
+        case 0:
+            printf("\033[0;31mCRÍTICO"); // Vermelho
+            break;
+        case 1:
+            printf("\033[0;33mBAIXO"); // Amarelo
+            break;
+        default:
+            printf("\033[0;32mNORMAL/ALTO"); // Verde
+            break;
+    }
+
+    printf("\033[0m\n"); // Restaura a cor padrão do terminal
+}
+
 
 void painel(const char *texto) {
     // Inicializa a biblioteca NCurses
@@ -493,8 +523,9 @@ int main() {
                 //set_intensity_B(map, 255);
                 //print_component_intensities(map);
                 set_led_status(map, 1);
-                set_battery_level(map, 3);
+                set_battery_level(map, 0);
                 print_message_with_color_and_rgb("Radiohead", map);
+                display_battery_sensor(map);
                 // painel("Radiohead");
                 //return 0;
                 break;
@@ -511,3 +542,4 @@ int main() {
 
     return EXIT_SUCCESS;
 }
+
