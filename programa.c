@@ -242,7 +242,6 @@ void set_led_status(char* base_address, int status) {
     printf("Status do LED atualizado para: %d\n", status);
 }
 
-
 void set_battery_level(char* base_address, int level) {
     // Verifica se o nível de bateria é válido (0 a 3)
     if (level < 0 || level > 3) {
@@ -344,8 +343,16 @@ void configure_text_display(char* base_address, const char* message) {
 // Função para exibir o menu principal
 void exibir_menu_principal() {
     printf("Seja bem vindo ao sistema de LED.\n");
+    printf("Digite 0 para ligar ou desligar o LED\n");
     printf("Digite 1 para manipular as cores\n");
-    printf("Digite 0 para sair do programa\n");
+    printf("Digite 2 para sair do programa\n");
+    printf("Digite 3 para sair do programa\n");
+}
+
+void exibir_menu_led() {
+    printf("Seja bem vindo ao sistema de LED.\n");
+    printf("Digite 0 para desligar o LED\n");
+    printf("Digite 1 para ligar o LED\n");
 }
 
 // Função para exibir o menu de manipulação das cores
@@ -469,10 +476,12 @@ int main() {
         return EXIT_FAILURE;
     }
 
+    int opcao_led;
+    int nivel_bateria;
     int opcao_principal;
     int opcao_cores;
     int valor_componente;
-    //int valor_intensidade;
+    int valor_intensidade;
 
     do {
         //painel("Radiohead");
@@ -481,6 +490,12 @@ int main() {
         scanf("%d", &opcao_principal);
 
         switch (opcao_principal) {
+            case 0:
+                exibir_menu_led();
+                scanf("%d", &opcao_led);
+                set_led_status(map, opcao_led);
+                printf("Funcionando!");
+                break;
             case 1:
                 // Exibir menu de manipulação das cores
                 exibir_menu_cores();
@@ -505,25 +520,24 @@ int main() {
                     case 3:
                         // Manipular o componente azul (B)
                         set_valor_B(map, valor_componente);
+                        if(valor_componente != 0){
+                            printf("Defina a intensidade do azul (0 a 255): ");
+                            scanf("%d", &valor_intensidade);
+                            set_intensity_B(map, valor_intensidade);
+                        }
                         break;
                     default:
                         printf("Opção inválida.\n");
                         break;
                 }
                 break;
-            case 0:
-                // Imprimir os valores armazenados nos registradores de RGB
-                // printf("\nValores armazenados nos registradores de RGB:\n");
-                // printf("R: %d\n", (*((unsigned short *)(map + (2 * sizeof(unsigned short)))) >> 10) & 0x01);
-                // printf("G: %d\n", (*((unsigned short *)(map + (2 * sizeof(unsigned short)))) >> 11) & 0x01);
-                // printf("B: %d\n", (*((unsigned short *)(map + (2 * sizeof(unsigned short)))) >> 12) & 0x01);
-
-                //set_intensity_R(map, 25);
-                //set_intensity_G(map, 500);
-                //set_intensity_B(map, 255);
-                //print_component_intensities(map);
+            case 2:
+                printf("Defina o nível de bateria (0, 1, 2 ou 3): ");
+                scanf("%d", &nivel_bateria);
+                set_battery_level(map, nivel_bateria);
+                break;
+            case 3:
                 set_led_status(map, 1);
-                set_battery_level(map, 0);
                 print_message_with_color_and_rgb("Radiohead", map);
                 display_battery_sensor(map);
                 // painel("Radiohead");
@@ -533,7 +547,7 @@ int main() {
                 printf("Opção inválida.\n");
                 break;
         }
-    } while (opcao_principal != 0);
+    } while (opcao_principal != 2);
 
     // Liberar recursos
     if (registers_release(map, FILE_SIZE) == -1) {
@@ -542,4 +556,3 @@ int main() {
 
     return EXIT_SUCCESS;
 }
-
