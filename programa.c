@@ -25,11 +25,13 @@ enum Colors {
 };
 
 // Corrigindo a máscara para o componente vermelho
-#define RED_MASK   0xFFFFFF00
+//#define RED_MASK   0xFFFFFF00
 //RED_MASK deve ser 0xFFFFFF00
-
+#define RED_MASK 0xF800
 // Corrigindo a máscara para o componente verde
-#define GREEN_MASK 0xFF0000
+// #define GREEN_MASK 0xF0
+//#define GREEN_MASK 0x07E0
+#define GREEN_MASK 0x07E0
 
 #define BLUE_MASK   0xFF
 
@@ -157,12 +159,13 @@ void set_intensity_R(char* base_address, int intensity) {
     }
 
     // Lê o valor atual do registrador R1
-    unsigned char value = *((unsigned char *)(base_address + (1 * sizeof(unsigned char))));
+    unsigned short value = *((unsigned short *)(base_address + (1 * sizeof(unsigned short))));
 
     // Limpa os bits correspondentes ao componente vermelho
+    value &= ~RED_MASK;
 
     // Define a intensidade do componente vermelho
-    value |= ((intensity << 8) & RED_MASK); // Desloca a intensidade para a esquerda em 8 bits
+    value |= ((intensity << 8) & RED_MASK);
 
     // Escreve o novo valor no registrador R1
     *((unsigned short *)(base_address + (1 * sizeof(unsigned short)))) = value;
@@ -184,14 +187,13 @@ void set_intensity_G(char* base_address, int intensity) {
     value &= ~GREEN_MASK;
 
     // Define a intensidade do componente verde
-    value |= ((intensity << 16) & GREEN_MASK); // Desloca a intensidade para a esquerda em 16 bits
+    value |= ((intensity << 2) & GREEN_MASK);
 
     // Escreve o novo valor no registrador R1
     *((unsigned short *)(base_address + (1 * sizeof(unsigned short)))) = value;
 
     printf("Valor do registrador R1 após definir a intensidade do componente verde: %hu\n", *((unsigned short *)(base_address + (1 * sizeof(unsigned short)))));
 }
-
 
 // Corrigindo a aplicação da máscara no método set_intensity_B
 void set_intensity_B(char* base_address, int intensity) {
@@ -215,6 +217,29 @@ void set_intensity_B(char* base_address, int intensity) {
 
     // Escreve o novo valor no registrador R2
     *((unsigned short *)(base_address + (2 * sizeof(unsigned short)))) = value;
+    printf("Valor do registrador R1 após definir a intensidade do componente azul: %hu\n", value);
+}
+
+void set_led_status(char* base_address, int status) {
+    // Verifica se o status é válido (0 ou 1)
+    if (status != 0 && status != 1) {
+        fprintf(stderr, "Erro: Status do LED inválido. Deve ser 0 (desligado) ou 1 (ligado).\n");
+        return;
+    }
+
+    // Lê o valor atual do registrador de controle
+    unsigned short control_register_value = *((unsigned short *)(base_address + (2 * sizeof(unsigned short))));
+
+    // Limpa o bit correspondente ao status do LED (bit 9)
+    control_register_value &= ~(1 << 9);
+
+    // Define o novo status do LED
+    control_register_value |= (status << 9);
+
+    // Escreve o novo valor no registrador de controle
+    *((unsigned short *)(base_address + (2 * sizeof(unsigned short)))) = control_register_value;
+
+    printf("Status do LED atualizado para: %d\n", status);
 }
 
 void print_message_with_color_and_rgb(const char* message, char* base_address) {
@@ -224,6 +249,7 @@ void print_message_with_color_and_rgb(const char* message, char* base_address) {
 
     // Se o LED estiver desligado, não imprime a mensagem
     if (led_status == 0) {
+        printf("Led está desligado!");
         return;
     }
 
@@ -439,10 +465,11 @@ int main() {
                 // printf("G: %d\n", (*((unsigned short *)(map + (2 * sizeof(unsigned short)))) >> 11) & 0x01);
                 // printf("B: %d\n", (*((unsigned short *)(map + (2 * sizeof(unsigned short)))) >> 12) & 0x01);
 
-                set_intensity_R(map, 105);
-                set_intensity_G(map, 55);
-                set_intensity_B(map, 255);
-                print_component_intensities(map);
+                //set_intensity_R(map, 25);
+                //set_intensity_G(map, 500);
+                //set_intensity_B(map, 255);
+                //print_component_intensities(map);
+                set_led_status(map, 1);
                 print_message_with_color_and_rgb("Radiohead", map);
                 // painel("Radiohead");
                 //return 0;
