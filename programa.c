@@ -299,7 +299,7 @@ void exibir_menu_intensidade(char componente) {
 //     }
 // }
 
-void painel(char* base_address) {
+void painel(const char *texto) {
     // Inicializa a biblioteca NCurses
     initscr();
     // Esconde o cursor
@@ -313,24 +313,14 @@ void painel(char* base_address) {
     int x = 0;
     int y = max_y / 2;
 
-    // String para armazenar os caracteres dos registradores
-    char mensagem[LED_DISPLAY_REGISTERS + 1];
-    mensagem[LED_DISPLAY_REGISTERS] = '\0'; // Certifique-se de que a string esteja terminada com null
-
     // Loop infinito para animação
     while (1) {
         // Limpa a tela
         clear();
 
-        // Lê os caracteres dos registradores e os concatena na string 'mensagem'
-        int i;
-        for (i = 0; i < LED_DISPLAY_REGISTERS; i++) {
-            mensagem[i] = *((unsigned short *)(base_address + ((i + 3) * sizeof(unsigned short))));
-        }
-
-        // Imprime a mensagem com a cor e o RGB correspondentes aos registradores
-        print_message_with_color_and_rgb(mensagem, base_address);
-
+        // Imprime a string na posição atual
+        mvprintw(y, x, texto);
+        
         // Atualiza a tela
         refresh();
 
@@ -351,12 +341,20 @@ void painel(char* base_address) {
 }
 
 // Função para exibir os valores dos registradores no console
-void display_registers(char* base_address) {
-    printf("Conteúdo dos registradores:\n");
-    for (int i = 0; i < LED_DISPLAY_REGISTERS; i++) {
-        printf("%c ", *((unsigned short *)(base_address + ((i + 3) * sizeof(unsigned short)))));
+char* display_registers(char* base_address) {
+    char* registro_string = (char*)malloc(LED_DISPLAY_REGISTERS * sizeof(char) + 1); // +1 para o caractere nulo
+    if (registro_string == NULL) {
+        perror("Erro ao alocar memória para a string de registradores");
+        return NULL;
     }
-    printf("\n");
+
+    // Conteúdo dos registradores
+    for (int i = 0; i < LED_DISPLAY_REGISTERS; i++) {
+        registro_string[i] = *((unsigned short *)(base_address + ((i + 3) * sizeof(unsigned short))));
+    }
+    registro_string[LED_DISPLAY_REGISTERS] = '\0'; // Terminador nulo
+
+    return registro_string;
 }
 
 
@@ -384,9 +382,9 @@ int main() {
                 // printf("G: %d\n", (*((unsigned short *)(map + (2 * sizeof(unsigned short)))) >> 11) & 0x01);
                 // printf("B: %d\n", (*((unsigned short *)(map + (2 * sizeof(unsigned short)))) >> 12) & 0x01);
                 //print_message_with_color_and_rgb("Radiohead", map);
-                //painel(map);
                 //return 0;
-                display_registers(map);
+                //printf("Conteúdo dos registradores: %s\n", display_registers(map));
+                painel(display_registers(map));
                 break;
 
             case 1:
