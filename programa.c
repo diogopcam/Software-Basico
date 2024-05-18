@@ -27,7 +27,6 @@ enum Colors {
 #define BLUE_MASK   0xFF
 
 int fd = -1; // Descritor de arquivo global
-char* mensagem = "";
 
 // Função para abrir ou criar o arquivo e mapeá-lo na memória
 char* registers_map(const char* file_path, int file_size) {
@@ -179,7 +178,7 @@ void set_intensity_B(char* base_address, int intensity) {
 
     // Escreve o novo valor no registrador R2
     *((unsigned short *)(base_address + (2 * sizeof(unsigned short)))) = value;
-    printf("Valor do registrador R1 após definir a intensidade do componente azul: %hu\n", value);
+    //printf("Valor do registrador R1 após definir a intensidade do componente azul: %hu\n", value);
 }
 
 void set_led_status(char* base_address, int status) {
@@ -201,7 +200,7 @@ void set_led_status(char* base_address, int status) {
     // Escreve o novo valor no registrador de controle
     *((unsigned short *)(base_address + (2 * sizeof(unsigned short)))) = control_register_value;
 
-    printf("Status do LED atualizado para: %d\n", status);
+    //printf("Status do LED atualizado para: %d\n", status);
 }
 
 void set_battery_level(char* base_address, int level) {
@@ -300,27 +299,14 @@ void configure_text_display(char* base_address, const char* message) {
     }
 }
 
-// Função para exibir o menu principal
-void exibir_menu_principal() {
-    printf("Seja bem vindo ao sistema de LED.\n");
-    printf("Digite 0 para ligar ou desligar o LED\n");
-    printf("Digite 1 para manipular as cores\n");
-    printf("Digite 2 para sair do programa\n");
-    printf("Digite 3 para sair do programa\n");
-}
 
-void exibir_menu_led() {
-    printf("Seja bem vindo ao sistema de LED.\n");
-    printf("Digite 0 para desligar o LED\n");
-    printf("Digite 1 para ligar o LED\n");
-}
-
-// Função para exibir o menu de manipulação das cores
-void exibir_menu_cores() {
-    printf("\nEscolha qual componente você deseja manipular:\n");
-    printf("R - 1\n");
-    printf("G - 2\n");
-    printf("B - 3\n");
+// Menu de LED no painel
+void exibir_menu_led(WINDOW *painel) {
+    werase(painel);  // Limpa o painel antes de exibir o novo menu
+    mvwprintw(painel, 1, 2, "Seja bem vindo ao sistema de LED.");
+    mvwprintw(painel, 2, 2, "Digite 0 para desligar o LED");
+    mvwprintw(painel, 3, 2, "Digite 1 para ligar o LED");
+    wrefresh(painel);  // Atualiza o painel para mostrar as mudanças
 }
 
 // Função para exibir o menu de ajuste de intensidade
@@ -405,73 +391,44 @@ void set_led_temperature(char* base_address, int temperature) {
     printf("Temperatura do LED definida como: %d\n", temperature);
 }
 
-// Função para armazenar os valores nos registradores
-char* store_registers(char* base_address) {
-    char* registro_string = (char*)malloc(LED_DISPLAY_REGISTERS * sizeof(char) + 1); // +1 para o caractere nulo
-    if (registro_string == NULL) {
-        perror("Erro ao alocar memória para a string de registradores");
-        return NULL;
-    }
+// MENUS VALIDOS PARA BAIXO
 
-    // Conteúdo dos registradores
-    for (int i = 0; i < LED_DISPLAY_REGISTERS; i++) {
-        registro_string[i] = *((unsigned short *)(base_address + ((i + 3) * sizeof(unsigned short))));
-    }
-    registro_string[LED_DISPLAY_REGISTERS] = '\0'; // Terminador nulo
-
-    return registro_string;
+void exibir_menu_painel_led(WINDOW *painel) {
+    mvwprintw(painel, 1, 2, "Seja bem vindo ao sistema de LED.");
+    mvwprintw(painel, 2, 2, "Digite 0 para ligar ou desligar o LED");
+    mvwprintw(painel, 3, 2, "Digite 1 para manipular as cores");
+    mvwprintw(painel, 4, 2, "Digite 2 para sair do programa");
+    wrefresh(painel);
 }
 
-void painel(const char *texto) {
-
-
-    // Inicializa a biblioteca NCurses
-    initscr();
-    // Esconde o cursor
-    curs_set(0);
-
-    int linhas = 15;
-    int colunas = 24;
-    // Cria a janela
-    WINDOW *win = newwin(linhas, colunas, 0, 0);
-
-    // Obtém o tamanho da tela
-    //int max_y, max_x;
-    //getmaxyx(stdscr, max_y, max_x);
-
-    // Posição inicial da string
-    int x = 0;
-    // int y = max_y / 2;
-    int y = 0;
-    
-
-    // Loop infinito para animação
-    while (1) {
-        // Limpa a tela
-        clear();
-
-        // Imprime a string na posição atual
-        mvprintw(y, x, texto);
-        
-        // Atualiza a tela
-        refresh();
-
-        // Move a string para a direita
-        x++;
-
-        // Se a string sair da tela, volta para a esquerda
-        if (x > colunas) {
-            x = 0;
-        }
-
-        // Aguarda um curto período de tempo para controlar a velocidade da animação
-        usleep(100000); // 100ms
-    }
-
-    // Finaliza a biblioteca NCurses
-    endwin();
+void exibir_menu_liga_led(WINDOW *painel){
+    mvwprintw(painel, 1, 2, "Seja bem vindo ao sistema de LED.");
+    mvwprintw(painel, 2, 2, "Digite 0 para desligar o LED");
+    mvwprintw(painel, 3, 2, "Digite 1 para ligar o LED");
+    wrefresh(painel);
 }
-void exibir_painel() {
+
+// Função para exibir o menu de manipulação das cores
+void exibir_menu_cores(WINDOW *painel) {
+    mvwprintw(painel, 1, 2, "Escolha qual componente você deseja manipular:");
+    mvwprintw(painel, 2, 2, "R - 1");
+    mvwprintw(painel, 3, 2, "G - 2");
+    mvwprintw(painel, 4, 2, "B - 3");
+    wrefresh(painel);
+}
+
+void limpar_linhas_painel(WINDOW *painel){
+    char espacamento[] = "                                               ";
+    mvwprintw(painel, 1, 2, espacamento);
+    mvwprintw(painel, 2, 2, espacamento);
+    mvwprintw(painel, 3, 2, espacamento);
+    mvwprintw(painel, 4, 2, espacamento);
+    wrefresh(painel);
+}
+// Para implementar:
+// se o valor for 0, apresente o menu de controle do LED
+
+void exibir_painel(char* base_address) {
     // Inicializa o modo ncurses
     initscr();
 
@@ -495,39 +452,108 @@ void exibir_painel() {
     // Define o estilo da janela
     box(painel, 0, 0); // Adiciona uma borda à janela
 
-    // Imprime o conteúdo do painel
-    mvwprintw(painel, 1, 2, "Seja bem vindo ao sistema de LED.");
-    mvwprintw(painel, 2, 2, "Digite 0 para ligar ou desligar o LED");
-    mvwprintw(painel, 3, 2, "Digite 1 para manipular as cores");
-    mvwprintw(painel, 4, 2, "Digite 2 para sair do programa");
-    mvwprintw(painel, 5, 2, "Digite 2 para sair do programa");
-
-    //Digite 0 para ligar ou desligar o LED Digite 1 para manipular as cores
-    //Digite 2 para sair do programa\nDigite 3 para sair do programa\n");
-
+    exibir_menu_painel_led(painel);
+    
     // Atualiza a tela
     wrefresh(painel);
 
     // Captura a entrada do usuário
     char entrada[100];
-    mvwgetstr(painel, 3, 2, entrada);
+    mvwgetstr(painel, 6, 2, entrada); // Ajusta as coordenadas para capturar a entrada
+    
+    int opcao_inicial = atoi(entrada);
 
-    // Imprime a entrada do usuário
-    //mvwprintw(painel, 4, 2, "Você digitou: %s", entrada);
-    //exibir_menu_principal();
-    wrefresh(painel);
+// Manipulação para ligar ou desligar o LED
+switch(opcao_inicial) {
+    case 0:
+        mvwprintw(painel, 6, 2, "                                ");
+        mvwprintw(painel, 7, 2, "Funcionou essa merda");
+        wrefresh(painel); // Atualiza o painel após imprimir o texto
 
-    // Aguarda a entrada do usuário
+        // Aguarda um tempo para que o usuário possa ler a mensagem
+        sleep(1); // Importe <unistd.h> para usar a função sleep
+
+        // Limpa o painel antes de exibir o novo menu
+        limpar_linhas_painel(painel);
+        // Exibe o novo menu
+        exibir_menu_liga_led(painel); // Mostra o novo menu
+        
+        // Obtém a nova entrada do usuário
+        mvwgetstr(painel, 6, 2, entrada);
+        int opcao_led = atoi(entrada);
+        // Atualiza o painel após imprimir o novo menu
+        wrefresh(painel);
+
+        // Verifica se a entrada é válida (1 ou 0)
+        if (opcao_led == 0 || opcao_led == 1 ) {
+            limpar_linhas_painel(painel);
+            mvwprintw(painel, 7, 2, "Ligar ou desligar o LED");
+            mvwprintw(painel, 8, 2, entrada);
+            set_led_status(base_address, opcao_led);
+            wrefresh(painel); // Atualiza o painel após imprimir o novo menu
+        } else {
+            limpar_linhas_painel(painel);
+            mvwprintw(painel, 7, 2, "Entrada inválida");
+            wrefresh(painel); // Atualiza o painel após imprimir o novo menu
+        }
+        break;
+    
+    case 1:
+        mvwprintw(painel, 6, 2, "                                ");
+        mvwprintw(painel, 7, 2, "Funcionou essa merda da cor");
+        wrefresh(painel); // Atualiza o painel após imprimir o texto
+
+        // Aguarda um tempo para que o usuário possa ler a mensagem
+        sleep(1); // Importe <unistd.h> para usar a função sleep
+
+        
+        // Limpa o painel antes de exibir o novo menu
+        //werase(painel);
+        limpar_linhas_painel(painel);
+        exibir_menu_cores(painel); // Mostra o novo menu
+        wrefresh(painel); // Atualiza o painel após imprimir o novo menu
+
+        // Obtém a nova entrada do usuário
+        mvwgetstr(painel, 6, 2, entrada);
+        int opcao_cor = atoi(entrada);
+
+        if (opcao_cor == 1 || opcao_cor == 2 || opcao_cor == 3) {
+            if(opcao_cor == 1){
+                set_valor_R(base_address, opcao_cor);
+                mvwprintw(painel, 7, 2, "VERMELHO");
+            }
+            if(opcao_cor == 2){
+                set_valor_G(base_address, opcao_cor);
+                mvwprintw(painel, 7, 2, "VERDE");
+            }
+            if(opcao_cor == 3){
+                set_intensity_B(base_address, opcao_cor);
+                mvwprintw(painel, 7, 2, "AZUL");
+            }
+            limpar_linhas_painel(painel);
+            mvwprintw(painel, 8, 2, entrada);
+            //set_led_status(base_address, opcao_cor);
+            wrefresh(painel); // Atualiza o painel após imprimir o novo menu
+        } else {
+            limpar_linhas_painel(painel);
+            mvwprintw(painel, 7, 2, "Entrada inválida");
+            wrefresh(painel); // Atualiza o painel após imprimir o novo menu
+        }
+        break;
+    // Outros casos para outras opções do menu...
+    default:
+        mvwprintw(painel, 6, 2, "Opção inválida");
+        wrefresh(painel); // Atualiza o painel para exibir a mensagem de opção inválida
+        break;
+}
+
+    // Espera o usuário pressionar uma tecla antes de sair
     getch();
 
-    // Limpa e destrói a janela do painel
-    werase(painel);
-    wrefresh(painel);
-    delwin(painel);
-
-    // Finaliza o modo ncurses
+    // Finaliza a biblioteca ncurses
     endwin();
 }
+
 
 int main() {
     // Abrir o arquivo e mapeá-lo na memória
@@ -544,76 +570,69 @@ int main() {
     int valor_intensidade;
 
     do {
-        exibir_painel();
-        //exibir_menu_principal();
+        exibir_painel(map);
         //scanf("%d", &opcao_principal);
 
-        switch (opcao_principal) {
-            case 0:
-                exibir_menu_led();
-                scanf("%d", &opcao_led);
-                set_led_status(map, opcao_led);
-                printf("Funcionando!");
-                break;
-            case 1:
-                // Exibir menu de manipulação das cores
-                exibir_menu_cores();
-                scanf("%d", &opcao_cores);
+        // switch (opcao_principal) {
+        //     case 0:
+        //         //exibir_menu_led();
+        //         scanf("%d", &opcao_led);
+        //         set_led_status(map, opcao_led);
+        //         printf("Funcionando!");
+        //         break;
+        //     case 1:
+        //         // Exibir menu de manipulação das cores
+        //         //exibir_menu_cores();
+        //         scanf("%d", &opcao_cores);
 
-                // Solicitar valor do componente
-                printf("Digite 0 para desligar ou 1 para ligar: ");
-                scanf("%d", &valor_componente);
+        //         // Solicitar valor do componente
+        //         printf("Digite 0 para desligar ou 1 para ligar: ");
+        //         scanf("%d", &valor_componente);
 
-                switch (opcao_cores) {
-                    case 1:
-                        // Manipular o componente vermelho (R)
-                        set_valor_R(map, valor_componente);
-                        // printf("Defina a intensidade de R: ");
-                        // scanf("%d", &valor_intensidade);
-                        // set_intensity_R(map, valor_intensidade);
-                        break;
-                    case 2:
-                        // Manipular o componente verde (G)
-                        set_valor_G(map, valor_componente);
-                        break;
-                    case 3:
-                        // Manipular o componente azul (B)
-                        set_valor_B(map, valor_componente);
-                        if(valor_componente != 0){
-                            printf("Defina a intensidade do azul (0 a 255): ");
-                            scanf("%d", &valor_intensidade);
-                            set_intensity_B(map, valor_intensidade);
-                        }
-                        break;
-                    default:
-                        printf("Opção inválida.\n");
-                        break;
-                }
-                break;
-            case 2:
-                printf("Defina o nível de bateria (0, 1, 2 ou 3): ");
-                scanf("%d", &nivel_bateria);
-                set_battery_level(map, nivel_bateria);
-                break;
-            case 3:
-                set_led_status(map, 1);
-                set_led_temperature(map, 30);
-                print_message_with_color_and_rgb("Radiohead", map);
-                display_battery_sensor(map);
-                // painel("Radiohead");
-                //return 0;
-                break;
-            case 4:
-                printf("Qual mensagem você deseja exibir?\n");
-                scanf("%s", mensagem);
-                configure_text_display(map, mensagem);
-                painel(store_registers(map));
-                break;
-            default:
-                printf("Opção inválida.\n");
-                break;
-        }
-    } while (opcao_principal != 3);
+        //         switch (opcao_cores) {
+        //             case 1:
+        //                 // Manipular o componente vermelho (R)
+        //                 set_valor_R(map, valor_componente);
+        //                 // printf("Defina a intensidade de R: ");
+        //                 // scanf("%d", &valor_intensidade);
+        //                 // set_intensity_R(map, valor_intensidade);
+        //                 break;
+        //             case 2:
+        //                 // Manipular o componente verde (G)
+        //                 set_valor_G(map, valor_componente);
+        //                 break;
+        //             case 3:
+        //                 // Manipular o componente azul (B)
+        //                 set_valor_B(map, valor_componente);
+        //                 if(valor_componente != 0){
+        //                     printf("Defina a intensidade do azul (0 a 255): ");
+        //                     scanf("%d", &valor_intensidade);
+        //                     set_intensity_B(map, valor_intensidade);
+        //                 }
+        //                 break;
+        //             default:
+        //                 printf("Opção inválida.\n");
+        //                 break;
+        //         }
+        //         break;
+        //     case 2:
+        //         printf("Defina o nível de bateria (0, 1, 2 ou 3): ");
+        //         scanf("%d", &nivel_bateria);
+        //         set_battery_level(map, nivel_bateria);
+        //         break;
+        //     case 3:
+        //         set_led_status(map, 1);
+        //         set_led_temperature(map, 30);
+        //         print_message_with_color_and_rgb("Radiohead", map);
+        //         display_battery_sensor(map);
+        //         // painel("Radiohead");
+        //         //return 0;
+        //         break;
+        //     default:
+        //         printf("Opção inválida.\n");
+        //         break;
+        // }
+    } while (opcao_principal != 100);
 
     // Liberar recursos
     if (registers_release(map, FILE_SIZE) == -1) {
