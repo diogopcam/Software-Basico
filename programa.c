@@ -1,19 +1,32 @@
 #include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <unistd.h>
 #include <sys/stat.h>
 #include <string.h>
+#include <ctype.h>
 #include <ncurses.h>
-
+#include <pthread.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <stdbool.h>
 #define FILE_PATH "registers.bin"
 #define FILE_SIZE 1024  // Tamanho do arquivo de registros
-#define LED_DISPLAY_REGISTERS 24
+#define LED_DISPLAY_REGISTERS 8
+#define OPERATION_LED_REGISTER 9
+#define RGB_LED_REGISTER 10
+
+int fd = -1; // Descritor de arquivo global
 
 // Função para abrir ou criar o arquivo e mapeá-lo na memória
 char* registers_map(const char* file_path, int file_size) {
-    int fd = open(file_path, O_RDWR | O_CREAT, 0666);
+    fd = open(file_path, O_RDWR | O_CREAT, 0666);
     if (fd == -1) {
         perror("Erro ao abrir ou criar o arquivo");
         return NULL;
@@ -34,7 +47,6 @@ char* registers_map(const char* file_path, int file_size) {
         return NULL;
     }
 
-    close(fd);  // Fechamos o descritor de arquivo porque não é mais necessário
     return map;
 }
 
@@ -42,165 +54,96 @@ char* registers_map(const char* file_path, int file_size) {
 int registers_release(void* map, int file_size) {
     if (munmap(map, file_size) == -1) {
         perror("Erro ao desmapear o arquivo");
+        close(fd);
         return -1;
     }
+
+    if (close(fd) == -1) {
+        perror("Erro ao fechar o arquivo");
+        return -1;
+    }
+
     return 0;
 }
 
-// Função para definir o valor do componente vermelho (R)
-void set_valor_R(char* base_address, int red_value) {
-    unsigned short control_register_value = *((unsigned short *)(base_address + (2 * sizeof(unsigned short))));
+void animate_text(const char *message, char *memory_address, int speed) {
+    const char *space = "                    "; // Espaços suficientes para limpar o texto anterior
+    int text_length = strlen(message);
+    int screen_width = 80; // Largura padrão do terminal
+    int i;
+    int delay = speed * 100000; // Calcula o atraso em milissegundos
 
-    // Se red_value for 1, liga o bit 10 do registrador de controle, caso contrário, desliga
-    if (red_value == 1) {
-        control_register_value |= (1 << 10); // Bit 10: Controla o componente vermelho (R)
-    } else {
-        control_register_value &= ~(1 << 10);
-    }
-
-    *((unsigned short *)(base_address + (2 * sizeof(unsigned short)))) = control_register_value;
-}
-
-// Função para definir o valor do componente verde (G)
-void set_valor_G(char* base_address, int green_value) {
-    unsigned short control_register_value = *((unsigned short *)(base_address + (2 * sizeof(unsigned short))));
-
-    // Se green_value for 1, liga o bit 11 do registrador de controle, caso contrário, desliga
-    if (green_value == 1) {
-        control_register_value |= (1 << 11); // Bit 11: Controla o componente verde (G)
-    } else {
-        control_register_value &= ~(1 << 11);
-    }
-
-    *((unsigned short *)(base_address + (2 * sizeof(unsigned short)))) = control_register_value;
-}
-
-// Função para definir o valor do componente azul (B)
-void set_valor_B(char* base_address, int blue_value) {
-    unsigned short control_register_value = *((unsigned short *)(base_address + (2 * sizeof(unsigned short))));
-
-    // Se blue_value for 1, liga o bit 12 do registrador de controle, caso contrário, desliga
-    if (blue_value == 1) {
-        control_register_value |= (1 << 12); // Bit 12: Controla o componente azul (B)
-    } else {
-        control_register_value &= ~(1 << 12);
-    }
-
-    *((unsigned short *)(base_address + (2 * sizeof(unsigned short)))) = control_register_value;
-}
-
-// Função para limpar a mensagem armazenada no display de LED
-
-// Função para limpar a mensagem armazenada no display de LED
-void clear_text_display(char* base_address) {
-    // Preenche os registradores de dados com espaços em branco
-    for (int i = 3; i < LED_DISPLAY_REGISTERS; i++) {
-        *((unsigned short *)(base_address + (i * sizeof(unsigned short)))) = ' ';
+    while (true) {
+        for (i = 0; i <= screen_width - text_length; i++) {
+            printf("\x1b[2J\x1b[1;1H"); // Limpa a tela e reposiciona o cursor
+            printf("%.*s%s\n", i, space, message); // Espaços para mover o texto para a direita
+            usleep(delay); // Espera o atraso especificado
+        }
     }
 }
 
-// Função para configurar a mensagem no display de LED
-// Função para configurar a mensagem no display de LED
-void configure_text_display(char* base_address, const char* message) {
-    // Limpa a mensagem armazenada no display
-    clear_text_display(base_address);
-
-    // Calcula o comprimento da nova mensagem
-    int message_length = strlen(message) + 1;
-
-    // Verifica se a mensagem excede o limite de caracteres do display
-    if (message_length > LED_DISPLAY_REGISTERS) {
-        fprintf(stderr, "Erro: mensagem excede o limite de caracteres do display\n");
+// Função para definir a velocidade da animação no registrador R0 (bits 3 a 8)
+void set_velocidade_animacao(char* base_address, int velocidade) {
+    // Verifica se a velocidade está dentro do intervalo válido (1-5)
+    if (velocidade < 1 || velocidade > 5) {
+        printf("Velocidade inválida. A velocidade deve estar entre 1 e 5.\n");
         return;
     }
 
-    // Escreve a nova mensagem nos registradores de dados (R4 a R11)
-    for (int i = 0; i < message_length; i++) {
-        *((unsigned short *)(base_address + ((i + 3) * sizeof(unsigned short)))) = message[i - 1];
-    }
+    unsigned short control_register_value = *((unsigned short *)(base_address)); // Valor atual do registrador R0
+    control_register_value &= ~((0x3F) << 3); // Limpa os bits de velocidade (bits 3 a 8)
+    control_register_value |= (velocidade << 3); // Define a velocidade nos bits 3 a 8 do registrador R0
+    *((unsigned short *)(base_address)) = control_register_value; // Atualiza o valor no registrador
 }
 
-
-// Função para ler a mensagem dos registradores de R4 a R11
-char* read_message_registers(char* base_address) {
-    char* message = (char*)malloc(LED_DISPLAY_REGISTERS * sizeof(char)); // Não é necessário espaço para o caractere nulo
-    if (message == NULL) {
-        perror("Erro ao alocar memória para a mensagem");
-        return NULL;
-    }
-
-    // Lê a mensagem dos registradores de R4 a R11
-    for (int i = 0; i < LED_DISPLAY_REGISTERS; i++) {
-        message[i] = *((unsigned short *)(base_address + ((i + 4) * sizeof(unsigned short))));
-    }
-
-    return message;
+// Função para retornar a velocidade da animação em milissegundos, baseada no valor armazenado no registrador R0
+int get_velocidade_milissegundos(char* base_address) {
+    unsigned short control_register_value = *((unsigned short *)(base_address)); // Valor atual do registrador R0
+    int velocidade = (control_register_value >> 3) & 0x3F; // Extrai os bits de velocidade (bits 3 a 8)
+    return velocidade * 100; // Converte a velocidade em milissegundos
 }
 
-// Função para imprimir a mensagem com a cor especificada
-void print_message_with_color_and_rgb(const char* message, char* base_address) {
-    unsigned short control_register_value = *((unsigned short *)(base_address + (2 * sizeof(unsigned short))));
-    
-    // Verifica o status dos componentes RGB
-    int red_on = (control_register_value >> 10) & 0x01;
-    int green_on = (control_register_value >> 11) & 0x01;
-    int blue_on = (control_register_value >> 12) & 0x01;
-
-    // Calcula o valor RGB com base nos bits de controle
-    unsigned int color = 0;
-    if (red_on) {
-        color |= 0xFF0000;
-    }
-    if (green_on) {
-        color |= 0x00FF00;
-    }
-    if (blue_on) {
-        color |= 0x0000FF;
-    }
-
-        // Imprime a mensagem com a cor especificada
-    printf("\x1b[38;2;%d;%d;%dm", (color >> 16) & 0xFF, (color >> 8) & 0xFF, color & 0xFF);
-    printf("%s\n", message);
-    printf("\x1b[0m");
-}
-
-// Função para exibir o menu principal
-void exibir_menu_principal() {
-    printf("Seja bem vindo ao sistema de LED.\n");
-    printf("Digite 0 para sair do programa\n");
-    printf("Digite 1 para manipular as cores\n");
-}
-
-// Função para exibir o menu de manipulação das cores
-void exibir_menu_cores() {
-    printf("\nEscolha qual componente você deseja manipular:\n");
-    printf("R - 1\n");
-    printf("G - 2\n");
-    printf("B - 3\n");
-}
 int main() {
-    // Abrir o arquivo e mapeá-lo na memória
+    //char *memory_address = NULL; // Endereço de memória (ainda não utilizado)
+        // Abrir o arquivo e mapeá-lo na memória
     char* map = registers_map(FILE_PATH, FILE_SIZE);
     if (map == NULL) {
         return EXIT_FAILURE;
     }
+    int speed = 2; // Velocidade padrão: 2 (média)
+    char option;
+    const char *message = "Hello, World!";
 
-    // Configurar a mensagem no display de LED
-    configure_text_display(map, "ollllllllllllllllllllll");
+    printf("Controle de Velocidade da Animação:\n");
+    printf("1. Muito Lento\n");
+    printf("2. Lento\n");
+    printf("3. Médio\n");
+    printf("4. Rápido\n");
+    printf("5. Muito Rápido\n");
+    printf("Pressione 'q' para sair.\n");
 
-    // Ler a mensagem dos registradores de R4 a R11
-    char* message = read_message_registers(map);
-    if (message != NULL) {
-        printf("Mensagem armazenada nos registradores: %s\n", message);
-        set_valor_R(map, 1);
-        print_message_with_color_and_rgb(message, map);
-        free(message);  // Liberar a memória alocada para a mensagem
+    while (true) {
+        printf("\nEscolha a velocidade (1-5): ");
+        scanf(" %c", &option);
+
+        if (option == 'q') {
+            break;
+        }
+
+        speed = option - '0'; // Converte o caractere para um número inteiro
+
+        if (speed < 1 || speed > 5) {
+            printf("Opção inválida. Escolha uma velocidade de 1 a 5.\n");
+            continue;
+        }
+
+        // Atualiza a velocidade da animação no registrador R0
+        set_velocidade_animacao(map, speed);
+        // Recupera e imprime a velocidade da animação em milissegundos
+        printf("Velocidade da animação: %d milissegundos\n", get_velocidade_milissegundos(map));
+
+        // Animação...
     }
 
-    // Liberar recursos
-    if (registers_release(map, FILE_SIZE) == -1) {
-        return EXIT_FAILURE;
-    }
-
-    return EXIT_SUCCESS;
+    return 0;
 }
