@@ -254,13 +254,38 @@ void exibir_menu_cores() {
     printf("G - 2\n");
     printf("B - 3\n");
 }
+// Função para armazenar a velocidade definida no registrador R0, dos bits 3 até o 8
+void armazenar_velocidade_R0(char* base_address, int velocidade) {
+    // Verificar se a velocidade está dentro do intervalo permitido (0 a 63)
+    if (velocidade < 0 || velocidade > 63) {
+        // Exibir uma mensagem de erro ou tomar alguma ação apropriada, se necessário
+        return;
+    }
+
+    // Obter o valor atual do registrador R0
+    unsigned short r0_register_value = *((unsigned short *)(base_address));
+
+    // Limpar os bits dos bits 3 até o 8 do registrador R0
+    r0_register_value &= ~(((1 << 6) - 1) << 3);
+
+    // Armazenar a velocidade nos bits 3 até o 8 do registrador R0
+    r0_register_value |= ((velocidade & 0x3F) << 3);
+
+    // Escrever o novo valor no registrador R0
+    *((unsigned short *)(base_address)) = r0_register_value;
+
+    // Printar o valor armazenado na tela
+    printf("Valor armazenado no registrador R0: %u\n", r0_register_value);
+}
 
 void animate_text(const char *message, char *memory_address, int speed) {
     const char *space = "                    "; // Espaços suficientes para limpar o texto anterior
     int text_length = strlen(message);
-    int screen_width = 80; // Largura padrão do terminal
+    int screen_width = 150; // Largura padrão do terminal
     int i;
     int delay;
+
+    //int vel = speed * 10;
 
     switch(speed) {
         case 1:
@@ -270,7 +295,7 @@ void animate_text(const char *message, char *memory_address, int speed) {
             delay = 50000; // 0.05 segundo
             break;
         case 3:
-            delay = 25000; // 0.025 segundo
+            delay = 3000; // 0.025 segundo
             break;
         default:
             delay = 100000; // Velocidade padrão: 0.1 segundo
@@ -297,9 +322,11 @@ int main() {
     set_valor_R(map, 0);
     set_valor_G(map, 1);
     set_valor_B(map, 0);
-    //configure_text_display(map, "Hello, LED World!");
-    animate_text("Hello world", map, 1);
-    print_message_with_color_and_rgb(map, "Hello");
+    //armazenar_velocidade_R0(map, 3);
+    configure_text_display(map, "Hello, LED World!");
+    char* text = read_message_registers(map);
+    animate_text(text, map, 2);
+    //print_message_with_color_and_rgb(map, "Hello");
     set_led_status(map, 1);
 
 // Ler a mensagem dos registradores de R4 a R11
